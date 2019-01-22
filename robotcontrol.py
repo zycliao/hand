@@ -1,7 +1,7 @@
 #! /usr/bin/env python
 # coding=utf-8
 import time
-import libpyauboi5
+from lib import libpyauboi5
 import logging
 import os
 from math import pi
