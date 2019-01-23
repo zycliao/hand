@@ -3,7 +3,6 @@
 import sys
 from chessboard import chessboard
 from searcher import searcher
-from ipdb import *
 
 # ----------------------------------------------------------------------
 # main game
