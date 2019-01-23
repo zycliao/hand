@@ -6,8 +6,8 @@ import numpy as np
 # tangent of camera cone
 # x_tan = (0.1882 / 0.264)
 # y_tan = (0.1407 / 0.264)
-x_tan = (0.3145/0.61146)
-y_tan = (0.2276/0.61146)
+x_tan = (0.3145 / 0.61146)
+y_tan = (0.2276 / 0.61146)
 
 
 class WuziRobot(Auboi5Robot):
@@ -100,30 +100,52 @@ class WuziRobot(Auboi5Robot):
     def current_waypoint(self):
         return self.get_current_waypoint()
 
+    # def move_to_coord(self, x, y):
+    #     # cam coord - tool coord
+    #     dx, dy = -0.008347545641425695, -0.02856086342482178
+    #     # the angle between cam and tool
+    #     deg = -0.02031323269453471
+    #
+    #     cur_x, cur_y, cur_z = self.current_waypoint['pos']
+    #     cur_x = cur_x + dx
+    #     cur_y = cur_y + dy
+    #
+    #     x = x - 320
+    #     y = y - 240
+    #     # rotate
+    #     xy = np.matmul(np.array([[np.cos(deg), np.sin(deg)], [-np.sin(deg), np.cos(deg)]]), np.array([[x], [y]]))
+    #     x = xy[0, 0]
+    #     y = xy[1, 0]
+    #
+    #     cur_height = cur_z - self.zero_z + 0.104
+    #     x_scale = cur_height * x_tan
+    #     y_scale = cur_height * y_tan
+    #     dst_x = cur_x - x*x_scale/320.
+    #     dst_y = cur_y + y*y_scale/240.
+    #
+    #     ik_result = self.inverse_kin(self.current_waypoint['joint'], (dst_x, dst_y, self.zero_z), self.current_waypoint['ori'])
+    #     self.move_joint(ik_result['joint'])
+
     def move_to_coord(self, x, y):
-        # cam coord - tool coord
-        dx, dy = -0.008347545641425695, -0.02856086342482178
-        # the angle between cam and tool
-        deg = -0.02031323269453471
-
-        cur_x, cur_y, cur_z = self.current_waypoint['pos']
-        cur_x = cur_x + dx
-        cur_y = cur_y + dy
-
         x = x - 320
         y = y - 240
-        # rotate
-        xy = np.matmul(np.array([[np.cos(deg), np.sin(deg)], [-np.sin(deg), np.cos(deg)]]), np.array([[x], [y]]))
-        x = xy[0, 0]
-        y = xy[1, 0]
 
-        cur_height = cur_z - self.zero_z + 0.104
-        x_scale = cur_height * x_tan
-        y_scale = cur_height * y_tan
-        dst_x = cur_x - x*x_scale/320.
-        dst_y = cur_y + y*y_scale/240.
+        cur_x, cur_y, cur_z = self.current_waypoint['pos']
 
-        ik_result = self.inverse_kin(self.current_waypoint['joint'], (dst_x, dst_y, self.zero_z), self.current_waypoint['ori'])
+        cam_z = cur_z - self.zero_z + 0.104
+        cam_x = (x / 320.) * cam_z * x_tan
+        cam_y = (y / 240.) * cam_z * y_tan
+
+        dst_tool_coord = np.matmul(np.array([[-0.7176703, 0.73085076, -0.02289747],
+                            [-0.71473604, -0.7594207, 0.02784064],
+                            [-0.03332854, 0.01750868, 0.9287325]]), np.array([cam_x, cam_y, cur_z])) + np.array(
+            [-0.02289756, 0.02784077, -0.0712676])
+
+        dst_x = dst_tool_coord[0] + cur_x
+        dst_y = -dst_tool_coord[1] + cur_y
+
+        ik_result = self.inverse_kin(self.current_waypoint['joint'], (dst_x, dst_y, self.zero_z),
+                                     self.current_waypoint['ori'])
         self.move_joint(ik_result['joint'])
 
 
@@ -137,6 +159,7 @@ if __name__ == '__main__':
         robot.prepare()
         robot.set_tool_power_type(power_type=RobotToolPowerType.OUT_0V)
         import time
+
         time.sleep(5)
         robot.move_to_init()
         robot.move_to_zero_z()
