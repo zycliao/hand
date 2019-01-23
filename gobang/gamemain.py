@@ -3,13 +3,33 @@
 import sys
 from chessboard import chessboard
 from searcher import searcher
+from evaluation import evaluation
 
 # ----------------------------------------------------------------------
 # main game
 # ----------------------------------------------------------------------
 
 
-def gamemain(SIZE, TEXT):
+def psyco_speedup():
+    try:
+        import psyco
+        psyco.bind(chessboard)
+        psyco.bind(evaluation)
+    except:
+        pass
+    return 0
+
+psyco_speedup()
+
+
+class GoBang(object):
+    def __init__(self):
+        pass
+
+def gamemain():
+    SIZE = 19  # The number of locations/cross-points in row or column
+    TEXT = '  A B C D E F G H I J K L M N O P Q R S'
+
     b = chessboard(SIZE=SIZE, TEXT=TEXT)
     s = searcher(SIZE)
     s.board = b.board()
@@ -51,8 +71,9 @@ def gamemain(SIZE, TEXT):
             text = raw_input().strip('\r\n\t ')    # ******* 输入接口（新来棋子） *******
             # set_trace()
             if len(text) == 2:
-                tr = ord(text[0].upper()) - ord('A')
-                tc = ord(text[1].upper()) - ord('A')
+                # tr = ord(text[0].upper()) - ord('A')
+                # tc = ord(text[1].upper()) - ord('A')
+                tr, tc = text
                 if tr >= 0 and tc >= 0 and tr < SIZE and tc < SIZE:
                     if b[tr][tc] == 0:
                         row, col = tr, tc
