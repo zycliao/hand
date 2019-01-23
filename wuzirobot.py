@@ -1,16 +1,23 @@
 # coding=utf-8
 from robotcontrol import *
+from utils.logger import logger
+import numpy as np
 
-xxx, yyy, zzz = 0.1882, 0.1407, 0.264
+# tangent of camera cone
+# x_tan = (0.1882 / 0.264)
+# y_tan = (0.1407 / 0.264)
+x_tan = (0.3145/0.61146)
+y_tan = (0.2276/0.61146)
+
 
 class WuziRobot(Auboi5Robot):
     def __init__(self, logger):
         Auboi5Robot.__init__(self)
         self.logger = logger
         self.zero_radian = (0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000)
-        self.init_pos = (0.045555930042795366, -0.6322379766245128, 0.4419410554923796)
+        self.init_pos = (-0.2863222836800378, -0.3641882948297106, 0.6854579419026046)
         self.init_ori = (0., 1., 0., 0.)
-        self.zero_z = 0.178
+        self.zero_z = 0.182
 
     def prepare(self, ip='192.168.1.1', port=8899):
         # 创建并打印上下文
@@ -93,11 +100,34 @@ class WuziRobot(Auboi5Robot):
     def current_waypoint(self):
         return self.get_current_waypoint()
 
+    def move_to_coord(self, x, y):
+        # cam coord - tool coord
+        dx, dy = -0.008347545641425695, -0.02856086342482178
+        # the angle between cam and tool
+        deg = -0.02031323269453471
+
+        cur_x, cur_y, cur_z = self.current_waypoint['pos']
+        cur_x = cur_x + dx
+        cur_y = cur_y + dy
+
+        x = x - 320
+        y = y - 240
+        # rotate
+        xy = np.matmul(np.array([[np.cos(deg), np.sin(deg)], [-np.sin(deg), np.cos(deg)]]), np.array([[x], [y]]))
+        x = xy[0, 0]
+        y = xy[1, 0]
+
+        cur_height = cur_z - self.zero_z + 0.104
+        x_scale = cur_height * x_tan
+        y_scale = cur_height * y_tan
+        dst_x = cur_x - x*x_scale/320.
+        dst_y = cur_y + y*y_scale/240.
+
+        ik_result = self.inverse_kin(self.current_waypoint['joint'], (dst_x, dst_y, self.zero_z), self.current_waypoint['ori'])
+        self.move_joint(ik_result['joint'])
+
 
 if __name__ == '__main__':
-    # 初始化logger
-    logger_init()
-
     # 系统初始化
     WuziRobot.initialize()
 
