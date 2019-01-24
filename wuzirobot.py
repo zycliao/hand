@@ -80,8 +80,15 @@ class WuziRobot(Auboi5Robot):
             self.logger.info(self.get_joint_maxacc())
 
             self.logger.info(self.get_current_waypoint())
+            self.set_tool_power_type(power_type=RobotToolPowerType.OUT_0V)
+            print(0)
 
     def move_to_init(self):
+        cur_x, cur_y, cur_z = self.current_waypoint['pos']
+        if cur_z - self.zero_z < 0.05:
+            ik_result = self.inverse_kin(self.current_waypoint['joint'], (cur_x, cur_y, self.zero_z + 0.05),
+                                         self.current_waypoint['ori'])
+            self.move_line(ik_result['joint'])
         logger.info("move to initial position")
         ik_result = self.inverse_kin(self.current_waypoint['joint'], self.init_pos, self.init_ori)
         self.move_joint(ik_result['joint'])
@@ -144,9 +151,25 @@ class WuziRobot(Auboi5Robot):
         dst_x = dst_tool_coord[0] + cur_x
         dst_y = -dst_tool_coord[1] + cur_y
 
-        ik_result = self.inverse_kin(self.current_waypoint['joint'], (dst_x, dst_y, self.zero_z),
+        ik_result = self.inverse_kin(self.current_waypoint['joint'], (dst_x, dst_y, self.zero_z+0.05),
                                      self.current_waypoint['ori'])
         self.move_joint(ik_result['joint'])
+        ik_result = self.inverse_kin(self.current_waypoint['joint'], (dst_x, dst_y, self.zero_z-0.01),
+                                     self.current_waypoint['ori'])
+        self.move_line(ik_result['joint'])
+
+    def catch_chess(self, x, y):
+        self.set_tool_power_type(power_type=RobotToolPowerType.OUT_0V)
+        self.move_to_coord(x, y)
+        time.sleep(2)
+        self.move_to_init()
+
+    def release_chess(self, x, y):
+        self.move_to_coord(x, y)
+        self.set_tool_power_type(power_type=RobotToolPowerType.OUT_24V)
+        time.sleep(2)
+        self.move_to_init()
+        self.set_tool_power_type(power_type=RobotToolPowerType.OUT_0V)
 
 
 if __name__ == '__main__':

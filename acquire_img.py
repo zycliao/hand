@@ -22,24 +22,24 @@ class Controller(object):
     def __init__(self, robot, win_name='RealSense'):
         self.robot = robot
         self.win_name = win_name
+        self.num = 0
+        self.img = None
         cv2.namedWindow('RealSense', cv2.WINDOW_AUTOSIZE)
         cv2.setMouseCallback('RealSense', self.move_hand)
 
     def show(self, images):
-        cv2.circle(images, (320, 240), 2, (0, 255, 0), 1)
-        cv2.circle(images, (640, 240), 2, (0, 255, 0), 1)
-        cv2.circle(images, (320, 0), 2, (0, 255, 0), 1)
+        self.img = images
         cv2.imshow('RealSense', images)
-        # print(self.robot.current_waypoint)
-
         return cv2.waitKey(1)
 
     def move_hand(self, event, x, y, flags, params):
-        # print('move hand!')
         if event == cv2.EVENT_LBUTTONDOWN:
             self.robot.move_to_coord(x, y)
-            # print(self.robot.current_waypoint['pos'])
             self.robot.move_to_init()
+        elif event == cv2.EVENT_LBUTTONDBCLK:
+            cv2.imwrite('./images/{}.jpg'.format(self.num), self.img)
+            np.savetxt('./images{}.txt'.format(self.num), [(self.robot.current_waypoint['pos'],
+                         self.robot.current_waypoint['pos'])])
 
 
 # Configure depth and color streams
