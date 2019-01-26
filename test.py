@@ -73,12 +73,13 @@ try:
         # Convert images to numpy arrays
         depth_image = np.asanyarray(depth_frame.get_data())
         mask = np.zeros_like(depth_image)
-        mask[120: 320, 220: 420] = 1
+        mask_size = 400
+        mask[(480-mask_size)/2: mask_size+(480-mask_size)/2, (640-mask_size)/2: mask_size+(640-mask_size)/2] = 1
         depth_image *= mask
         # print(np.min(depth_image[depth_image > 0]))
 
         color_image = np.asanyarray(color_frame.get_data())
-        cv2.imwrite('对角.jpg',color_image)
+        cv2.imwrite('1.jpg',color_image)
         # Apply colormap on depth image (image must be converted to 8-bit per pixel first)
         depth_colormap = cv2.applyColorMap(cv2.convertScaleAbs(depth_image, alpha=0.03), cv2.COLORMAP_JET)
 

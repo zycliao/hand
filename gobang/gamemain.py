@@ -13,19 +13,14 @@ from evaluation import evaluation
 class GoBang(object):
     def __init__(self):
 
-        self.SIZE = 19  # The number of locations/cross-points in row or column
-        self.TEXT = '  A B C D E F G H I J K L M N O P Q R S'
+        self.SIZE = 13  # The number of locations/cross-points in row or column
+        self.TEXT = '  A B C D E F G H I J K L M'
 
         self.b = chessboard(SIZE=self.SIZE, TEXT=self.TEXT)
         self.s = searcher(self.SIZE)
         self.s.board = self.b.board()
 
-        # opening = ['2:JJ']
-        #
-        # import random
-        # openid = random.randint(0, len(opening) - 1)
-        # self.b.loads(opening[openid])
-        # turn = 2
+        self.turn = 2
         self.history = []
         # self.undo = False
 
@@ -43,7 +38,15 @@ class GoBang(object):
             pass
         return 0
 
+    def robot_first(self):
+        opening = ['2:GG']
+        import random
+        openid = random.randint(0, len(opening) - 1)
+        self.b.loads(opening[openid])
+        return 6, 6, 1
+
     def one_round(self, text):
+        print 'input: people move to [%d, %d]' % (text[0], text[1])
     # def one_round(self):
         # input the location of people, i.e., text = [row, col]
 
@@ -65,9 +68,10 @@ class GoBang(object):
             return None, None, 0
 
         print('robot is thinking now ...')
-        score, row, col = self.s.search(2, self.DEPTH)  # ******* 输出接口（机器人落棋位置） ******
+        score, row, col = self.s.search(self.turn, self.DEPTH)  # ******* 输出接口（机器人落棋位置） ******
         cord = '%s%s' % (chr(ord('A') + row), chr(ord('A') + col))
-        print('robot move to %s (%d)' % (cord, score))
+        # print('robot move to %s (%d)' % (cord, score))
+        print 'output: robot move to [%d, %d]' % (row, col)
         self.b[row][col] = 2
         game_state = 1
 

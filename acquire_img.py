@@ -13,6 +13,7 @@ import cv2
 from wuzirobot import WuziRobot
 from robotcontrol import RobotError
 from utils.logger import logger
+from utils.cam2tool import cam2tool
 
 
 xxx, yyy = 0.1882, 0.1407
@@ -33,13 +34,21 @@ class Controller(object):
         return cv2.waitKey(1)
 
     def move_hand(self, event, x, y, flags, params):
+        # if event == cv2.EVENT_LBUTTONDOWN:
+        #     cur_x, cur_y, cur_z = robot.current_waypoint['pos']
+        #     X, Y, Z = cam2tool(x, y, cur_x, cur_y)
+        #     ik_result = self.robot.inverse_kin(self.robot.current_waypoint['joint'], (X, Y, Z),
+        #                                        self.robot.current_waypoint['ori'])
+        #     self.robot.move_joint(ik_result['joint'])
+        #     import time
+        #     time.sleep(5)
+        #     # self.robot.move_to_coord(x, y)
+        #     self.robot.move_to_init()
         if event == cv2.EVENT_LBUTTONDOWN:
-            self.robot.move_to_coord(x, y)
-            self.robot.move_to_init()
-        elif event == cv2.EVENT_LBUTTONDBCLK:
             cv2.imwrite('./images/{}.jpg'.format(self.num), self.img)
-            np.savetxt('./images{}.txt'.format(self.num), [(self.robot.current_waypoint['pos'],
-                         self.robot.current_waypoint['pos'])])
+            np.savetxt('./images/{}_pos.txt'.format(self.num), np.array(self.robot.current_waypoint['pos']))
+            np.savetxt('./images/{}_ori.txt'.format(self.num), np.array(self.robot.current_waypoint['ori']))
+            self.num += 1
 
 
 # Configure depth and color streams
@@ -60,7 +69,8 @@ controller = Controller(robot)
 try:
     robot.prepare()
     print robot.current_waypoint
-    robot.move_to_init()
+    # robot.move_to_init()
+    robot.move_hello()
 
     while True:
 
@@ -69,16 +79,13 @@ try:
         depth_frame = frames.get_depth_frame()
         color_frame = frames.get_color_frame()
 
-
         # Convert images to numpy arrays
         depth_image = np.asanyarray(depth_frame.get_data())
-        mask = np.zeros_like(depth_image)
-        mask[120: 320, 220: 420] = 1
-        depth_image *= mask
-        # print(np.min(depth_image[depth_image > 0]))
+        # mask = np.zeros_like(depth_image)
+        # mask[120: 320, 220: 420] = 1
+        # depth_image *= mask
 
         color_image = np.asanyarray(color_frame.get_data())
-        cv2.imwrite('对角.jpg',color_image)
         # Apply colormap on depth image (image must be converted to 8-bit per pixel first)
         depth_colormap = cv2.applyColorMap(cv2.convertScaleAbs(depth_image, alpha=0.03), cv2.COLORMAP_JET)
 
@@ -86,7 +93,7 @@ try:
         images = np.hstack((color_image, depth_colormap))
 
         # Show images
-        k = controller.show(images)
+        k = controller.show(color_image)
         if k == ord('q'):
             cv2.destroyAllWindows()
             robot.disconnect()
