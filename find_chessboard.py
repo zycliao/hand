@@ -4,6 +4,7 @@ import numpy as np
 
 EPS = 1e-6
 
+
 def intersection(r1, t1, r2, t2):
     c1 = np.cos(t1)
     s1 = np.sin(t1)
@@ -11,8 +12,8 @@ def intersection(r1, t1, r2, t2):
     s2 = np.sin(t2)
     # y = (r2-r1*c2/c1)/(EPS+s2-c1*c2/c1)
     # x = (r1-y*s1)/(c1+EPS)
-    x = (r1*s2-r2*s1)/(np.sin(t2-t1))
-    y = r2/s2-x*c2/s2
+    x = (r1 * s2 - r2 * s1) / (np.sin(t2 - t1) + EPS)
+    y = r2 / (s2 + EPS) - x * c2 / (s2 + EPS)
     return x, y
 
 
@@ -21,10 +22,10 @@ def find_cont(img, get_max=True):
     # img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     cont, _ = cv2.findContours(img, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
     if get_max:
-        max_span = np.array([np.max(c[:, 0, 0])-np.min(c[:, 0, 0]) for c in cont])
+        max_span = np.array([np.max(c[:, 0, 0]) - np.min(c[:, 0, 0]) for c in cont])
         # cont_num = np.array([c.shape[0] for c in cont])
         cont_idx = np.argmax(max_span)
-        cont = cont[cont_idx: cont_idx+1]
+        cont = cont[cont_idx: cont_idx + 1]
     return cont
 
 
@@ -41,6 +42,17 @@ def find_mask(img):
 
 
 def find_chessboard(ref_img, debug=False):
+    def line_dis(p1, p2):
+        return np.sqrt(np.sum(np.square(p1 - p2)))
+
+    while 1:
+        lu, ru, rd, ld = find_chessboard_one(ref_img, debug=debug)
+        if not (line_dis(lu, ru) < 400 or line_dis(ru, rd) < 400 or
+                line_dis(rd, ld) < 400 or line_dis(ld, lu) < 400):
+            return lu, ru, rd, ld
+
+
+def find_chessboard_one(ref_img, debug=False):
     mask = find_mask(ref_img)
     # ref_hsv *= mask
     masked_img = ref_img * np.expand_dims(mask, -1)
@@ -135,6 +147,5 @@ def find_chessboard(ref_img, debug=False):
 
 
 if __name__ == '__main__':
-
     ref_img = cv2.imread('对角.jpg')
     find_chessboard(ref_img, debug=True)

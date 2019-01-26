@@ -28,6 +28,14 @@ class Camera(object):
         cv2.circle(self.circle_mask, (11, 11), 11, (255, 255, 255), -1)
         self.circle_mask /= 255
 
+        # these two arrays store quant coord that has been subtracted by 3
+        self.black_array = []
+        self.white_array = []
+
+        # the length of the sub area in the chessboard
+        self.sub_len = 13
+        self.sub_pad = (19 - self.sub_len) / 2
+
     def capture(self):
         frames = self.pipeline.wait_for_frames()
         depth_frame = frames.get_depth_frame()
@@ -45,7 +53,7 @@ class Camera(object):
         # self.orig_x, self.orig_y = lu[0], lu[1]
         # self.b_x, self.b_y = (ru[0] - self.orig_x) / 18., (rd[1] - self.orig_y) / 18.
 
-    def get_gomoku_location(self):
+    def get_gomoku_inside(self):
         color_image, _ = self.capture()
         white_pixel_ = self.detection_white(color_image)
         black_pixel_ = self.detection_black(color_image)
@@ -59,7 +67,7 @@ class Camera(object):
         for w_pixel in white_pixel_:
             w_quant = self.pixel2quant(w_pixel)
             if 0 <= w_quant[0] <= 18 and 0 <= w_quant[1] <= 18:
-                if 3 <= w_quant[0] <= 15 and 3 <= w_quant[1] <= 15:
+                if self.sub_pad <= w_quant[0] <= 18-self.sub_pad and self.sub_pad <= w_quant[1] <= 18-self.sub_pad:
                     white_quant_in.append(w_quant)
                 else:
                     white_pixel_out.append(w_pixel)
@@ -67,7 +75,7 @@ class Camera(object):
         for b_pixel in black_pixel_:
             b_quant = self.pixel2quant(b_pixel)
             if 0 <= b_quant[0] <= 18 and 0 <= b_quant[1] <= 18:
-                if 3 <= b_quant[0] <= 15 and 3 <= b_quant[1] <= 15:
+                if self.sub_pad <= b_quant[0] <= 18-self.sub_pad and self.sub_pad <= b_quant[1] <= 18-self.sub_pad:
                     black_quant_in.append(b_quant)
                 else:
                     black_pixel_out.append(b_pixel)
@@ -78,6 +86,42 @@ class Camera(object):
         # black_in = [k for k in black_pixel if 3 <= k[0] <= 15 and 3 <= k[1] <= 15]
         # white_in = [k for k in white_pixel if 3 <= k[0] <= 15 and 3 <= k[1] <= 15]
         return white_quant_in, black_quant_in, white_pixel_out, black_pixel_out
+
+    def get_gomoku_out(self):
+        color_image, _ = self.capture()
+        white_pixel_ = self.detection_white(color_image)
+        black_pixel_ = self.detection_black(color_image)
+        # white_quant = self.pixel2quant(white_pixel_)
+        # black_quant = self.pixel2quant(black_pixel)
+
+        white_quant_in = []
+        black_quant_in = []
+        white_pixel_out = []
+        black_pixel_out = []
+        for w_pixel in white_pixel_:
+            w_quant = self.pixel2quant(w_pixel)
+            if 0 <= w_quant[0] <= 18 and 0 <= w_quant[1] <= 18:
+                if self.sub_pad <= w_quant[0] <= 18 - self.sub_pad and self.sub_pad <= w_quant[1] <= 18 - self.sub_pad:
+                    white_quant_in.append(w_quant)
+                else:
+                    white_pixel_out.append(w_pixel)
+
+        for b_pixel in black_pixel_:
+            b_quant = self.pixel2quant(b_pixel)
+            if 0 <= b_quant[0] <= 18 and 0 <= b_quant[1] <= 18:
+                if self.sub_pad <= b_quant[0] <= 18 - self.sub_pad and self.sub_pad <= b_quant[1] <= 18 - self.sub_pad:
+                    black_quant_in.append(b_quant)
+            else:
+                if b_pixel[0] > np.minimum(self.ru[0], self.rd[0]):
+                    black_pixel_out.append(b_pixel)
+
+        # white_pixel = [k for k in white_pixel_ if 0 <= k[0] <= 18 and 0 <= k[1] <= 18]
+        # black_pixel = [k for k in black_pixel if 0 <= k[0] <= 18 and 0 <= k[1] <= 18]
+
+        # black_in = [k for k in black_pixel if 3 <= k[0] <= 15 and 3 <= k[1] <= 15]
+        # white_in = [k for k in white_pixel if 3 <= k[0] <= 15 and 3 <= k[1] <= 15]
+        return white_quant_in, black_quant_in, white_pixel_out, black_pixel_out
+
 
     # def pixel2quants(self,pixels , flag_in=False):
     #     quant_list=[]
@@ -152,7 +196,10 @@ class Camera(object):
         else:
             a = (l1[1] - l2[1]) / (l1[0] - l2[0])
             b = l1[1] - a * l1[0]
-        dis = abs((p[0] * a - p[1] + b) / (np.sqrt(1 + a * a)))
+        try:
+            dis = abs((p[0] * a - p[1] + b) / (np.sqrt(1 + a * a)))
+        except IndexError as e:
+            print e
         return dis
 
     def quant2pixel(self, quant_x, quant_y):
@@ -168,27 +215,27 @@ class Camera(object):
         pixel_y = quant_y_up + (quant_y_down - quant_y_up) * quant_y / 18.
         return [pixel_x, pixel_y]
 
-    def get_frame(self, update=True):
-        white_quant_in, black_quant_in, white_pixel_out, black_pixel_out = self.get_gomoku_location()
-        white_fix_in = [[i[0] - 3, i[1] - 3] for i in white_quant_in]
-        black_fix_in = [[i[0] - 3, i[1] - 3] for i in black_quant_in]
-        center_array = white_fix_in + black_fix_in
+    # def get_frame(self, update=True):
+    #     white_quant_in, black_quant_in, white_pixel_out, black_pixel_out = self.get_gomoku_out()
+    #     white_fix_in = [[i[0] - 3, i[1] - 3] for i in white_quant_in]
+    #     black_fix_in = [[i[0] - 3, i[1] - 3] for i in black_quant_in]
+        # center_array = white_fix_in + black_fix_in
+        #
+        # new_array = [i for i in center_array if i not in self.center_array]
 
-        new_array = [i for i in center_array if i not in self.center_array]
-
-        if update:
-            self.center_array = center_array
-            print("Center array: {}".format(self.center_array))
-
-            # draw all quant
-            quant_img, _ = self.capture()
-            quant_img = self.draw_all_quant(quant_img)
-            cv2.imshow('quant', quant_img)
+        # if update:
+        #     self.center_array = center_array
+        #     print("Center array: {}".format(self.center_array))
+        #
+        #     # draw all quant
+        #     quant_img, _ = self.capture()
+        #     quant_img = self.draw_all_quant(quant_img)
+        #     cv2.imshow('quant', quant_img)
 
         # print color_image
-        print 'new_array %s' % new_array
-        return new_array[0] if len(new_array) > 0 else None, white_pixel_out[0] if len(white_pixel_out)>0 else None, \
-               black_pixel_out[0] if len(black_pixel_out)>0 else None
+        # print 'new_array %s' % new_array
+        # return new_array[0] if len(new_array) > 0 else None, white_pixel_out[0] if len(white_pixel_out)>0 else None, \
+        #        black_pixel_out[0] if len(black_pixel_out)>0 else None
 
     # def quant2pixel(self, col, row):
     #     return col * self.b_x + self.orig_x, row * self.b_y + self.orig_y
@@ -296,3 +343,45 @@ class Camera(object):
                         best_y = j
                         min_color = mean_mat
         return x+best_x, y+best_y
+
+    def register_new_chess(self, col, row, color):
+        """
+        register a new chess
+        """
+        assert [col, row] not in self.black_array and [col, row] not in self.white_array
+        if color == 'black':
+            print("Black array: {}".format(self.black_array))
+            self.black_array.append([col, row])
+        elif color == 'white':
+            print("White array: {}".format(self.white_array))
+            self.white_array.append([col, row])
+        print("register {}: {}, {}".format(color, col, row))
+
+    def one_more_chess(self, chess_quants, color):
+        """
+        judge whether chess_quants have one more chess than black_array(white array)
+        color could only be 'black' or 'white'
+        """
+        if color == 'black':
+            new_chess = [k for k in chess_quants if k not in self.black_array]
+            # new_chess = list(set(chess_quants) - set(self.black_array))
+            if len(new_chess) == 1 and \
+                len(chess_quants) - len(self.black_array) == 1:
+                return new_chess[0]
+            else:
+                return None
+        elif color == 'white':
+            new_chess = [k for k in chess_quants if k not in self.white_array]
+            if len(new_chess) == 1 and \
+                len(chess_quants) - len(self.white_array) == 1:
+                return new_chess[0]
+            else:
+                return None
+        else:
+            raise ValueError
+
+    def full2sub(self, quants):
+        """
+        convert the full chessboard quant coords to sub chessboard quant coords
+        """
+        return [[i[0] - self.sub_pad, i[1] - self.sub_pad] for i in quants]

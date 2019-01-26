@@ -46,7 +46,7 @@ class GoBang(object):
         return 6, 6, 1
 
     def one_round(self, text):
-        print 'input: people move to [%d, %d]' % (text[0], text[1])
+        # print 'input: people move to [%d, %d]' % (text[0], text[1])
     # def one_round(self):
         # input the location of people, i.e., text = [row, col]
 
@@ -71,7 +71,7 @@ class GoBang(object):
         score, row, col = self.s.search(self.turn, self.DEPTH)  # ******* 输出接口（机器人落棋位置） ******
         cord = '%s%s' % (chr(ord('A') + row), chr(ord('A') + col))
         # print('robot move to %s (%d)' % (cord, score))
-        print 'output: robot move to [%d, %d]' % (row, col)
+        print 'output: robot move to [%d, %d]' % (col, row)
         self.b[row][col] = 2
         game_state = 1
 
