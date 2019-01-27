@@ -14,16 +14,18 @@ from wuzirobot import WuziRobot
 from robotcontrol import RobotError
 from utils.logger import logger
 from utils.cam2tool import cam2tool
+from faceio import FaceRecog
+from controller import Controller
 
 
 xxx, yyy = 0.1882, 0.1407
 
 
-class Controller(object):
+class _Controller(object):
     def __init__(self, robot, win_name='RealSense'):
         self.robot = robot
         self.win_name = win_name
-        self.num = 0
+        self.num = 20
         self.img = None
         cv2.namedWindow('RealSense', cv2.WINDOW_AUTOSIZE)
         cv2.setMouseCallback('RealSense', self.move_hand)
@@ -65,7 +67,7 @@ WuziRobot.initialize()
 
 # 创建机械臂控制类
 robot = WuziRobot(logger)
-controller = Controller(robot)
+controller = _Controller(robot)
 try:
     robot.prepare()
     print robot.current_waypoint
@@ -99,6 +101,22 @@ try:
             robot.disconnect()
             break
 
+        face = FaceRecog(folder='./faceio/our_faces', sampleCount=8, modelPath="./faceio/deploy.prototxt.txt",
+                         weightPath="./faceio/res10_300x300_ssd_iter_140000.caffemodel", confidence=0.8)
+        face.predict(color_image)
+
+
+        # todo 拍不到人脸，可能报错
+
+        # import time
+        # time.sleep(1)
+
+        # todo 识别人脸后，调用Controller
+
+        robot.move_to_init()
+
+        break
+
 except RobotError, e:
     logger.error("{0} robot Event:{1}".format(robot.get_local_time(), e))
 
@@ -117,3 +135,20 @@ finally:
 
 # Stop streaming
 pipeline.stop()
+
+import time
+time.sleep(1)
+
+
+robot_first = True
+controller = Controller(True)
+
+if robot_first:
+    controller.action(None)
+new_chess = controller.wait_human()
+
+while 1:
+    if controller.action(new_chess) is None:
+        break
+    new_chess = controller.wait_human()
+controller.disconnect()

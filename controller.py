@@ -5,6 +5,7 @@ from wuzirobot import WuziRobot
 from camera import Camera
 from utils.logger import logger_init
 from gobang.gamemain import GoBang
+from faceio import FaceRecog
 import time
 
 
@@ -135,6 +136,15 @@ class Controller(object):
 if __name__ == '__main__':
     robot_first = True
     controller = Controller(True)
+
+    rec_face = False
+    if rec_face:
+        controller.robot.move_hello()
+        color_img, _ = controller.camera.capture()
+        face = FaceRecog(folder='./faceio/our_faces', sampleCount=8, modelPath="./faceio/deploy.prototxt.txt",
+                         weightPath="./faceio/res10_300x300_ssd_iter_140000.caffemodel", confidence=0.8)
+        face.predict(color_img)
+        controller.robot.move_to_init()
 
     if robot_first:
         controller.action(None)

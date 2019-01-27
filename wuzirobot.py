@@ -15,8 +15,9 @@ y_tan = (-0.23820488 / 0.61146)
 x_tan = (-0.3543237 / 0.61146)
 y_tan = (-0.20480625 / 0.61146)
 
-x_tan = (-0.3590276/0.61146)
-y_tan = (-0.22420567/0.61146)
+x_tan = (-0.3590276 / 0.61146)
+y_tan = (-0.22420567 / 0.61146)
+
 
 class WuziRobot(Auboi5Robot):
     def __init__(self, logger):
@@ -27,7 +28,9 @@ class WuziRobot(Auboi5Robot):
         self.init_ori = (0., 1., 0., 0.)
         self.zero_z = 0.182
 
-        self.hello_position = (0.6391571164131165, 0.07267963886260986, -0.4625343680381775, -0.43437522649765015, -1.3867640495300293, -0.9316351413726807)
+        self.hello_position = (
+            0.6351768374443054, 0.2261800915002823, -0.46258947253227234, -0.513762354850769, -1.3836095333099365,
+            -0.9316167831420898)
 
     def prepare(self, ip='192.168.1.1', port=8899):
         # 创建并打印上下文
@@ -103,6 +106,19 @@ class WuziRobot(Auboi5Robot):
         ik_result = self.inverse_kin(self.current_waypoint['joint'], self.init_pos, self.init_ori)
         self.move_joint(ik_result['joint'])
 
+    def move_to_zero_ori(self):
+        cur_x, cur_y, cur_z = self.current_waypoint['pos']
+        # if cur_z - self.zero_z < 0.05:
+        #     ik_result = self.inverse_kin(self.current_waypoint['joint'], (cur_x, cur_y, self.zero_z + 0.05),
+        #                                  self.current_waypoint['ori'])
+        #     self.move_line(ik_result['joint'])
+        logger.info("move to zero ori")
+        ik_result = self.inverse_kin(self.current_waypoint['joint'], (cur_x, cur_y, cur_z - 0.3), self.init_ori)
+        if ik_result is None:
+            print 'ik_result is None'
+        else:
+            self.move_joint(ik_result['joint'])
+
     def move_to_zero(self):
         logger.info("move to zero position")
         self.move_joint(self.zero_radian)
@@ -143,7 +159,7 @@ class WuziRobot(Auboi5Robot):
     #     ik_result = self.inverse_kin(self.current_waypoint['joint'], (dst_x, dst_y, self.zero_z), self.current_waypoint['ori'])
     #     self.move_joint(ik_result['joint'])
 
-    def move_to_coord(self, x, y):
+    def move_to_coord(self, x, y, lower=False):
         xf, yf = 0.3145, 0.2276
         x = (x - 320) / 320.
         y = (y - 240) / 240.
@@ -151,20 +167,25 @@ class WuziRobot(Auboi5Robot):
         cur_x, cur_y, cur_z = self.current_waypoint['pos']
 
         # intrinsic
-        intri_mat = np.array([[-0.26025414 ,-0.11201902 , 0.46335214],
- [ 0.2190264 , -0.07228895 , 0.54456127],
- [ 0.00456996, -0.23794995 , 0.45977205]])
+        intri_mat = np.array([[-0.26025414, -0.11201902, 0.46335214],
+                              [0.2190264, -0.07228895, 0.54456127],
+                              [0.00456996, -0.23794995, 0.45977205]])
+        R = np.array([[0.88068247, 0.00276375, 0.27867976],
+                      [0.02697515, 1.04405, 0.38250926],
+                      [-0.5211914, -0.6277767, 0.4366236]])
+        t = np.array([-0.28089553, -0.3066029, 0.6314296])
+
+        intri_mat = np.array([[-0.23469193, -0.12249327, 0.44167835],
+                              [0.21669582, -0.07273288, 0.5128718],
+                              [0.07611477, -0.2007165, 0.4141666]])
+        R = np.array([[0.97371703, -0.10240156, 0.2761366],
+                      [0.14718546, 1.0675778, 0.36602277],
+                      [-0.38947088, -0.5786356, 0.44720966]])
+        t = np.array([-0.30965808, -0.30189404, 0.6920944])
+
         # intri_mat = np.diag([xf, yf, 1])
 
-        cam_z = cur_z - 0.178 + 0.104
-        cam_z = 0.61146
-
         cam_x, cam_y, cam_z = np.matmul(intri_mat, np.array([x, -y, -0.61146]))
-
-        R = np.array([[ 0.88068247 , 0.00276375,  0.27867976],
- [ 0.02697515 , 1.04405 ,    0.38250926],
- [-0.5211914 , -0.6277767  , 0.4366236 ]])
-        t = np.array([-0.28089553 ,-0.3066029  , 0.6314296 ])
 
         dst_tool_coord = np.matmul(R, np.array([cam_x, cam_y, cam_z])) + t
 
@@ -174,13 +195,17 @@ class WuziRobot(Auboi5Robot):
         ik_result = self.inverse_kin(self.current_waypoint['joint'], (dst_x, dst_y, self.zero_z + 0.05),
                                      self.current_waypoint['ori'])
         self.move_joint(ik_result['joint'])
-        ik_result = self.inverse_kin(self.current_waypoint['joint'], (dst_x, dst_y, self.zero_z - 0.01),
+        if lower:
+            zz = 0.02
+        else:
+            zz = 0.01
+        ik_result = self.inverse_kin(self.current_waypoint['joint'], (dst_x, dst_y, self.zero_z - zz),
                                      self.current_waypoint['ori'])
         self.move_line(ik_result['joint'])
 
     def catch_chess(self, x, y):
         self.set_tool_power_type(power_type=RobotToolPowerType.OUT_0V)
-        self.move_to_coord(x, y)
+        self.move_to_coord(x, y, lower=True)
         time.sleep(1)
         self.move_to_init()
 
@@ -195,6 +220,8 @@ class WuziRobot(Auboi5Robot):
         logger.info("move to hello position")
         self.move_joint(self.hello_position)
 
+    def write_name(self, ):
+        pass
 
 if __name__ == '__main__':
     # 系统初始化

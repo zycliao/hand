@@ -46,7 +46,15 @@ def find_chessboard(ref_img, debug=False):
         return np.sqrt(np.sum(np.square(p1 - p2)))
 
     while 1:
-        lu, ru, rd, ld = find_chessboard_one(ref_img, debug=debug)
+        try:
+            lu, ru, rd, ld = find_chessboard_one(ref_img, debug=debug)
+        except StandardError as e:
+            print(e)
+            continue
+
+        if lu is None:
+            print("Please move the chessboard until the camera could see it")
+            continue
         if not (line_dis(lu, ru) < 400 or line_dis(ru, rd) < 400 or
                 line_dis(rd, ld) < 400 or line_dis(ld, lu) < 400):
             return lu, ru, rd, ld
@@ -112,7 +120,9 @@ def find_chessboard_one(ref_img, debug=False):
         cv2.circle(ref_img, tuple(c.astype(int)), 2, (0, 255, 0), 1)
 
     # left up
-    assert len(cross_p) > 0
+    # assert len(cross_p) > 0
+    if len(cross_p) == 0:
+        return None, None, None, None
     cp = np.array(cross_p)
     xy = np.sum(cp, -1)
     lu = np.argmin(xy)
